@@ -1,0 +1,180 @@
+-- 🧩 1. DATA VAULT MODEL
+--LET  break data into:
+
+--🔑 Hubs: Unique business entities
+
+--🔗 Links: Relationships between hubs
+
+--📦 Satellites: Descriptive, changeable attributes
+
+--HUB: Patient
+
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Hub_Patient (
+    Patient_ID INT PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source VARCHAR(255)
+);
+
+-- HUB: Hospital
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Hub_Hospital (
+    Hospital_ID INT PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source INT
+);
+
+-- HUB: Doctor
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Hub_Doctor (
+    Doctor_ID  INT PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source INT
+);
+
+-- HUB: Insurance
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Hub_Insurance (
+    Insurance_ID INT PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source INT
+);
+
+--2 RELATIONSHIP
+-- LINK: Patient Admission (who admitted where, under which doctor/insurance)
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Link_Patient_Admission (
+    Patient_ID INT,
+    Doctor_ID INT,
+    Hospital_ID INT,
+    Insurance_ID INT,
+    Admission_ID INT PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source INT
+);
+
+-- SAT: Patient Profile
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Sat_Patient_Profile (
+    Patient_ID INT,
+    Name VARCHAR(255),
+    Age INT,
+    Gender VARCHAR(20),
+    Blood_Group VARCHAR(20),
+    Load_DTS TIMESTAMP,
+    Effective_From TIMESTAMP,
+    Record_Source VARCHAR(20)
+);
+
+-- SAT: Admission Details
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Sat_Admission_Details (
+    Admission_ID INT,
+    Medical_Condition VARCHAR(255),
+    Date_of_Admission DATE,
+    Admission_Type vARCHAR(255),
+    Room_Number int,
+    Discharge_Date DATE,
+    Load_DTS TIMESTAMP,
+    Effective_From TIMESTAMP,
+    Record_Source varchar(255)
+);
+
+-- SAT: Billing & Insurance
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Sat_Billing_Info (
+    Admission_ID int,
+    Billing_Amount DECIMAL(10, 2),
+    Insurance_Provider varchar(25),
+    Load_DTS TIMESTAMP,
+    Effective_From TIMESTAMP,
+    Record_Source varchar(255)
+);
+
+-- SAT: Medication & Test Results
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Sat_Medical_Records (
+    Admission_ID int,
+    Medication varchar(255),
+    Test_Results varchar(255),
+    Load_DTS TIMESTAMP,
+    Effective_From TIMESTAMP,
+    Record_Source varchar(255)
+);
+-- 2. DIMENSIONAL MODEL
+---Let’s build a star schema with one main fact table and multiple dimension tables.
+-- DIM: Patient
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Dim_Patient (
+    Patient_ID int PRIMARY KEY,
+    Name varchar(255),
+    Age INT,
+    Gender varchar(25),
+    Blood_Group varchar(10)
+);
+
+-- DIM: Hospital
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Dim_Hospital (
+    Hospital_ID int PRIMARY KEY,
+    Hospital_Name varchar(255)
+);
+
+-- DIM: Doctor
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Dim_Doctor (
+    Doctor_ID int PRIMARY KEY,
+    Doctor_Name varchar(50)
+);
+
+-- DIM: Insurance
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Dim_Insurance (
+    Insurance_ID int PRIMARY KEY,
+    Provider_Name varchar(255)
+);
+
+-- DIM: Date (optional for time tracking)
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Dim_Date (
+    Date_ID INT PRIMARY KEY,
+    Full_Date DATE,
+    Day INT,
+    Month INT,
+    Year INT
+);
+--fact table
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Fact_Admission (
+    Admission_ID int PRIMARY KEY,
+    Patient_ID int,
+    Hospital_ID int,
+    Doctor_ID int,
+    Insurance_ID int,
+    Date_of_Admission DATE,
+    Admission_Type varchar(25),
+    Room_Number int,
+    Discharge_Date DATE,
+    Medical_Condition varchar(255),
+    Medication varchar(255),
+    Test_Results varchar(255),
+    Billing_Amount DECIMAL(10, 2),
+
+    FOREIGN KEY (Patient_ID) REFERENCES HEALTHCARE_DB.HOSPITALschema.Dim_Patient(Patient_ID),
+    FOREIGN KEY (Doctor_ID) REFERENCES HEALTHCARE_DB.HOSPITALschema.Dim_Doctor(Doctor_ID),
+    FOREIGN KEY (Hospital_ID) REFERENCES HEALTHCARE_DB.HOSPITALschema.Dim_Hospital(Hospital_ID),
+    FOREIGN KEY (Insurance_ID) REFERENCES HEALTHCARE_DB.HOSPITALschema.Dim_Insurance(Insurance_ID)
+);
+
+-- creating orignal table
+create table HEALTHCARE_DB.HOSPITALschema.orignal_hopital_table(Name Varchar(250),age varchar(20),gender varchar(200), blood_group varchar(200),medicalcondition varchar(200),
+"date of admission" varchar(20),Doctor varchar(200),Hospital varchar(200),Insurance_Provider varchar(200),"billing amount" varchar(200)
+,Room_Number varchar(200),
+Admission_Type varchar(200),"Discharge Date" varchar(200),Medication varchar(200),"Test Results" varchar(200)
+);
+
+drop table HEALTHCARE_DB.HOSPITALschema.orignal_hopital_table
+
+--updating cloumn for id
+drop table HEALTHCARE_DB.HOSPITALschema.Hub_Patient;
+CREATE TABLE HEALTHCARE_DB.HOSPITALschema.Hub_Patient (
+    Patient_ID serial PRIMARY KEY,
+    Load_DTS TIMESTAMP,
+    Record_Source VARCHAR(255),
+	name varchar(200)
+);
+INSERT INTO HEALTHCARE_DB.HOSPITALschema. Hub_Patient(
+    Name,  Load_DTS, Record_Source
+)
+SELECT 
+                     -- Patient ID from System_A as   SOURCE FROM b2b
+    Name,                         -- Patient Name from System_A
+                         -- Patient Address from System_A
+    CURRENT_TIMESTAMP AS Load_DTS,  -- Load timestamp
+    'System_A' AS Record_Source     -- Indicate the source system (System_A)
+FROM HEALTHCARE_DB.HOSPITALschema.orignal_hopital_table
