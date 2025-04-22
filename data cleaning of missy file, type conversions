@@ -1,0 +1,112 @@
+------------------------select to find average bills
+SELECT 
+    COUNT(hospital) AS Hospital_occurance,
+    hospital,
+    name,
+    doctor,
+    gender,
+    "date of admission",
+    AVG("billing amount"::Numeric) AS "billing amount"
+FROM hospitalschema.orignal_hopital_table
+GROUP BY 
+    hospital,
+    name,
+    doctor,
+    gender,
+    "date of admission"
+ORDER BY Hospital_occurance DESC;
+------------------------------------------DATA VERIFICATION, CLEANING AND TYPE TRANSFORMATION
+--checking for - number and other sign like £
+SELECT *
+FROM hospitalschema.orignal_hopital_table
+WHERE NOT "billing amount" ~ '^\d+(\.\d+)?$';
+--checking for empty row
+SELECT *
+FROM hospitalschema.orignal_hopital_table
+WHERE "billing amount" IS NULL OR "billing amount" = '';
+--filling it with null
+UPDATE hospitalschema.orignal_hopital_table
+SET "billing amount" = NULL
+WHERE "billing amount" = '';
+
+
+-- delete row ith null or empty
+DELETE FROM hospitalschema.orignal_hopital_table
+WHERE "billing amount" = ''or NULL 
+
+---------------valid date replace
+-- Replace non-date values with NULL for "date of admission"
+UPDATE hospitalschema.orignal_hopital_table
+SET "date of admission" = NULL
+WHERE "date of admission" IS NOT NULL AND "date of admission" !~ '^\d{4}-\d{2}-\d{2}$';
+
+-- Replace non-date values with NULL for "Discharge Date"
+UPDATE hospitalschema.orignal_hopital_table
+SET "Discharge Date" = NULL
+WHERE "Discharge Date" IS NOT NULL AND "Discharge Date" !~ '^\d{4}-\d{2}-\d{2}$';
+
+
+
+--cleaning and type conversion into numeric Removes any characters except digits, . and -
+UPDATE hospitalschema.orignal_hopital_table
+SET "billing amount" = REGEXP_REPLACE("billing amount", '[^\d\.\-]', '', 'g')
+WHERE "billing amount" ~ '[^\d\.\-]';
+
+
+-- checking after cleaning except - negative
+SELECT *
+FROM hospitalschema.orignal_hopital_table
+WHERE NOT "billing amount" ~ '^[-]?\d+(\.\d+)?$';
+
+--if content  rows if nothing is outputed theen is good
+SELECT *
+FROM hospitalschema.orignal_hopital_table
+WHERE NOT "billing amount" ~ '^[-]?\d+(\.\d+)?$';
+----------------------------------------------------------------------------------data type coversion
+--now let convert the row into numeric vales
+ALTER TABLE hospitalschema.orignal_hopital_table
+ALTER COLUMN "billing amount" TYPE NUMERIC
+USING "billing amount"::NUMERIC;
+
+
+ALTER TABLE hospitalschema.orignal_hopital_table
+ALTER COLUMN "billing amount" TYPE NUMERIC(10, 2)
+USING "billing amount"::NUMERIC;
+
+
+-----------------------------------CHECKING FOR MIN,AVG AND MAX BILLING
+SELECT 
+    MIN("billing amount"::NUMERIC) AS MINIMUM_AMOUNT,
+	MAX("billing amount"::NUMERIC) AS MAXIMUM_AMOUNT,
+	AVG("billing amount"::NUMERIC) AS AVG_AMOUNT
+FROM hospitalschema.orignal_hopital_table;
+-------------------------------------------------------aggregate for lenght_of_Stay
+SELECT
+	name, age,
+    "room_number",
+    "date of admission",
+	medicalcondition as medical_condition,
+    "Discharge Date",
+    (COALESCE("Discharge Date"::DATE, CURRENT_DATE) - "date of admission"::DATE) AS stay_length_in_days
+FROM hospitalschema.orignal_hopital_table
+
+ORDER BY stay_length_in_days desc,age DESC
+LIMIT 10;
+
+------------------
+
+ALTER TABLE hospitalschema.orignal_hopital_table
+ALTER COLUMN "Discharge Date" TYPE DATE
+USING "Discharge Date"::DATE;
+
+----------------cleaning
+-- Replace empty strings or invalid dates with NULL in "date of admission"
+UPDATE hospitalschema.orignal_hopital_table
+SET "date of admission" = NULL
+WHERE "date of admission" = '' OR "date of admission" IS NULL;
+
+-- Replace empty strings or invalid dates with NULL in "Discharge Date"
+UPDATE hospitalschema.orignal_hopital_table
+SET "Discharge Date" = NULL
+WHERE "Discharge Date" = '' OR "Discharge Date" IS NULL;
+
