@@ -110,3 +110,51 @@ UPDATE hospitalschema.orignal_hopital_table
 SET "Discharge Date" = NULL
 WHERE "Discharge Date" = '' OR "Discharge Date" IS NULL;
 
+
+2. 
+-----------convert from integer to varchar
+ALTER TABLE HEALTHCARE_DB.HOSPITALschema.link_patient_admission
+ALTER COLUMN Record_Source TYPE VARCHAR;
+------------------------------converting from timestamp to date
+ALTER TABLE hospitalschema.orignal_hopital_table
+ALTER COLUMN "Discharge Date" TYPE DATE
+USING "Discharge Date"::DATE;
+----------------------------------------removing data from table
+truncate table HEALTHCARE_DB.HOSPITALschema.link_patient_admission
+
+------------------------------------------------- viewung table content
+select * from HEALTHCARE_DB.HOSPITALschema.link_patient_admission
+
+---------------corrected
+INSERT INTO HEALTHCARE_DB.HOSPITALschema.link_patient_admission (
+    patient_id,
+    doctor_id,
+    hospital_id,
+    insurance_id,
+    admission_id,
+    Load_DTS, 
+    Record_Source
+)
+SELECT 
+    p.patient_id,
+    d.doctor_id,
+    h.hospital_id,
+    i.insurance_id,
+    a.admission_id,
+    CURRENT_TIMESTAMP AS Load_DTS,
+    'System_A' AS Record_Source
+FROM HEALTHCARE_DB.HOSPITALschema.hub_hospital o
+JOIN HEALTHCARE_DB.HOSPITALschema.hub_patient p 
+    ON  p.patient_id = o.hospital_id -- Fix: Match patient_id from o with p
+JOIN HEALTHCARE_DB.HOSPITALschema.hub_doctor d 
+    ON o.hospital_id = d.doctor_id  -- Fix: Match doctor_id from o with d
+JOIN HEALTHCARE_DB.HOSPITALschema.hub_hospital h 
+    ON o.hospital_id = h.hospital_id  -- Fix: Match hospital_id correctly
+JOIN HEALTHCARE_DB.HOSPITALschema.hub_insurance i 
+    ON o.hospital_id = i.insurance_id  -- Fix: Match insurance_id
+JOIN HEALTHCARE_DB.HOSPITALschema.sat_admission_details a 
+    ON o.hospital_id = a.admission_id;  -- Fix: Match admission_id
+
+
+
+
