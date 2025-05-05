@@ -1,0 +1,69 @@
+import boto3
+import redshift_connector
+import os
+
+def lambda_handler(event, context):
+    # Configurations
+    bucket_name = "classbucket2024"
+    source_key = "raw/demosets/lettuce_dataset.csv"
+    destination_key = "processed/lettuce_dataset.csv"
+    s3_path = f"s3://{bucket_name}/{destination_key}"
+
+    print("Starting Lambda function...")
+
+    # Copy file in S3 from raw to processed
+    s3 = boto3.client('s3')
+    try:
+        print(f"Copying from {source_key} to {destination_key} in bucket {bucket_name}...")
+        s3.copy_object(
+            Bucket=bucket_name,
+            CopySource={'Bucket': bucket_name, 'Key': source_key},
+            Key=destination_key
+        )
+        print("File copied successfully.")
+    except Exception as e:
+        print(f"Error copying file: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': f"Error copying file: {str(e)}"
+        }
+
+    # Prepare Redshift COPY command
+    iam_role = os.getenv('REDSHIFT_ROLE')
+    sql = f"""
+    COPY lettuce_dataset_csv
+    FROM '{s3_path}'
+    IAM_ROLE '{iam_role}'
+    FORMAT AS CSV
+    IGNOREHEADER 1
+    DELIMITER ',';"""
+
+    # Connect to Redshift using environment variables
+    try:
+        print("Connecting to Redshift...")
+        conn = redshift_connector.connect(
+            host=os.getenv('REDSHIFT_HOST'),
+            database=os.getenv('REDSHIFT_DB'),
+            user=os.getenv('REDSHIFT_USER'),
+            password=os.getenv('REDSHIFT_PASSWORD'),
+            port=int(os.getenv('REDSHIFT_PORT', 5439))
+        )
+        cursor = conn.cursor()
+        print("Running COPY command...")
+        cursor.execute(sql)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("COPY command completed successfully.")
+
+        return {
+            'statusCode': 200,
+            'body': "Data copied to Redshift successfully."
+        }
+
+    except Exception as e:
+        print(f"Error during Redshift operation: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': f"Error during Redshift operation: {str(e)}"
+        }
