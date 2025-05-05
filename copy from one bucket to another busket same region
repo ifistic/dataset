@@ -1,0 +1,4 @@
+Response:
+{
+  "statusCode": 500,
+  "body": "Error copying file: An error occurred (NoSuchKey) when calling the CopyObject"
