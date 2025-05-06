@@ -1,0 +1,69 @@
+import boto3
+import pandas as pd
+import io
+
+def read_csv_with_fallback(body_stream):
+    raw_bytes = body_stream.read()
+    try:
+        return pd.read_csv(io.BytesIO(raw_bytes), encoding='utf-8')
+    except UnicodeDecodeError:
+        print("⚠️ UTF-8 decode failed, retrying with 'latin1' encoding...")
+        return pd.read_csv(io.BytesIO(raw_bytes), encoding='latin1')
+
+def main():
+    try:
+        # S3 setup
+        bucket = 'classbucket2024'
+        raw_key = 'raw/demosets/sales_data.csv'
+        processed_key = 'processed/sales_data_cleaned.csv'
+
+        # Create S3 client
+        s3 = boto3.client('s3')
+
+        # Read raw CSV file from S3
+        raw_obj = s3.get_object(Bucket=bucket, Key=raw_key)
+        df = read_csv_with_fallback(raw_obj['Body'])
+
+        # Step 1: Infer and print original data types
+        original_types = df.dtypes.apply(lambda x: str(x)).to_dict()
+        print("📌 Original Data Types:")
+        for col, dtype in original_types.items():
+            print(f"  {col}: {dtype}")
+
+        # Step 2: Data Cleaning & Type Conversion
+        for col in df.columns:
+            if df[col].dtype == 'object':
+                df[col] = df[col].astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
+
+        df['id'] = pd.to_numeric(df['id'], errors='coerce')
+        df['units_sold'] = pd.to_numeric(df['units_sold'], errors='coerce')
+
+        float_cols = ['unit_price', 'unit_cost', 'total_revenue', 'total_cost', 'total_profit']
+        for col in float_cols:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        df['order_date'] = pd.to_datetime(df['order_date'], errors='coerce')
+        df['ship_date'] = pd.to_datetime(df['ship_date'], errors='coerce')
+
+        # Drop rows with missing critical values
+        critical_cols = ['id', 'units_sold', 'unit_price', 'unit_cost', 'total_revenue', 'total_cost', 'total_profit', 'order_date', 'ship_date']
+        df.dropna(subset=critical_cols, inplace=True)
+
+        # Step 3: Print cleaned data types
+        cleaned_types = df.dtypes.apply(lambda x: str(x)).to_dict()
+        print("\n Cleaned Data Types:")
+        for col, dtype in cleaned_types.items():
+            print(f"  {col}: {dtype}")
+
+        # Step 4: Upload cleaned CSV to S3
+        csv_buffer = io.StringIO()
+        df.to_csv(csv_buffer, index=False)
+        s3.put_object(Bucket=bucket, Key=processed_key, Body=csv_buffer.getvalue())
+
+        print("\n Data cleaned and uploaded to S3 successfully.")
+
+    except Exception as e:
+        print(f"\n Error: {str(e)}")
+
+if __name__ == "__main__":
+    main()
