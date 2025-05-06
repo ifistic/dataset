@@ -1,0 +1,50 @@
+import os
+import redshift_connector
+
+def lambda_handler(event, context):
+    try:
+        # Environment variables (or hardcode for local testing)
+        user = os.getenv('REDSHIFT_USER')
+        password = os.getenv('REDSHIFT_PASSWORD')
+        host = os.getenv('REDSHIFT_HOST')
+        port = int(os.getenv('REDSHIFT_PORT', 5439))
+        db = os.getenv('REDSHIFT_DB')
+        iam_role = os.getenv('REDSHIFT_ROLE')
+
+        # S3 path to processed data
+        s3_path = "s3://classbucket2024/processed/sales_data_cleaned.csv"
+
+        # Redshift COPY command (adjust schema and table name as needed)
+        sql = f"""
+        COPY salesschema.sales_data_cleaned
+        FROM '{s3_path}'
+        IAM_ROLE '{iam_role}'
+        FORMAT AS CSV
+        IGNOREHEADER 1
+        DELIMITER ',';
+        """
+
+        # Connect to Redshift
+        conn = redshift_connector.connect(
+            host=host,
+            database=db,
+            user=user,
+            password=password,
+            port=port
+        )
+        cursor = conn.cursor()
+        cursor.execute(sql)
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            'statusCode': 200,
+            'body': 'Table updated and COPY executed successfully.'
+        }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f'❌ Error: {str(e)}'
+        }
