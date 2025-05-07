@@ -1,0 +1,58 @@
+import os
+import boto3
+from datetime import datetime
+
+def lambda_handler(event, context):
+    try:
+        redshift_data = boto3.client('redshift-data')
+
+        # Get current timestamp
+        timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+        s3_path = f"s3://classbucket2024/UNLOAD_FILES/sales_{timestamp}.csv"
+
+        # UNLOAD SQL query
+        sql = f"""
+        UNLOAD ('
+            SELECT 
+                region, 
+                country,
+                COUNT(*) AS count_of_total_orders,
+                COUNT(CASE WHEN "order_date" >= ship_date - INTERVAL ''3 days'' THEN 1 END) AS shipped_within_3_days
+            FROM HOSPITALschema.sales 
+            GROUP BY region, country
+        ')
+        TO '{s3_path}'
+        IAM_ROLE '{os.getenv('REDSHIFT_ROLE')}'
+        FORMAT AS CSV
+        DELIMITER ','
+        ALLOWOVERWRITE
+        PARALLEL OFF;
+        """
+
+        # Execute the statement
+        response = redshift_data.execute_statement(
+            WorkgroupName=os.getenv('REDSHIFT_WORKGROUP'),
+            Database=os.getenv('REDSHIFT_DB'),
+            SecretArn=os.getenv('REDSHIFT_SECRET_ARN'),
+            Sql=sql
+        )
+
+        return {
+            'statusCode': 200,
+            'body': f'✅ UNLOAD started. File: {s3_path}, Statement ID: {response["Id"]}'
+        }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f'❌ Error: {str(e)}'
+        }
+### UNLOAD ('SELECT * FROM "HOSPITALschema".sales')
+# TO 's3://classbucket2024/UNLOAD_FILES/sales_parallel_'
+# IAM_ROLE 'your-redshift-role-arn'
+# FORMAT AS CSV
+# DELIMITER ','
+# ALLOWOVERWRITE
+# PARALLEL ON;
+# FOR LARGE DATASET. THIS WILL SPLIT IT INTO MULTIPLIES FILES LIKE 
+ # SALES_PARALELL001, SALES_PARALELL002 ETC
