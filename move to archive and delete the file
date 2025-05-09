@@ -1,0 +1,37 @@
+import boto3
+import datetime
+import os
+
+s3 = boto3.client('s3')
+
+def lambda_handler(event, context):
+    try:
+        bucket = os.environ.get('BUCKET_NAME', 'classbucket2024')
+        source_key = 'raw/demosets/sales_data.csv'
+        archive_key = source_key.replace('raw/', 'archive/', 1)
+
+        # Get the object's last modified time
+        head = s3.head_object(Bucket=bucket, Key=source_key)
+        last_modified = head['LastModified']
+        age_days = (datetime.datetime.utcnow() - last_modified.replace(tzinfo=None)).days
+
+        # Move the file (copy + delete) if at least 1 day old
+        if age_days >= 1:
+            s3.copy_object(Bucket=bucket, CopySource={'Bucket': bucket, 'Key': source_key}, Key=archive_key)
+            s3.delete_object(Bucket=bucket, Key=source_key)
+
+            return {
+                'statusCode': 200,
+                'body': f'Moved and deleted {source_key} -> {archive_key}'
+            }
+        else:
+            return {
+                'statusCode': 200,
+                'body': f' File not old enough to delete. Age: {age_days} day(s)'
+            }
+
+    except Exception as e:
+        return {
+            'statusCode': 500,
+            'body': f' Error: {str(e)}'
+        }
