@@ -1,11 +1,11 @@
--- 🧩 1. DATA VAULT MODEL
+--  1. DATA VAULT MODEL
 --LET  break data into:
 
---🔑 Hubs: Unique business entities
+-- Hubs: Unique business entities
 
---🔗 Links: Relationships between hubs
+-- Links: Relationships between hubs
 
---📦 Satellites: Descriptive, changeable attributes
+-- Satellites: Descriptive, changeable attributes
 
 --HUB: Patient
 
