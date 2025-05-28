@@ -49,10 +49,10 @@ def connect_postgresql():
     try:
         engine = create_engine(pg_connection_url)
         connection = engine.connect()
-        print("✅ PostgreSQL connection established.")
+        print(" PostgreSQL connection established.")
         return engine, connection
     except SQLAlchemyError as e:
-        print(f"❌ Error connecting to PostgreSQL: {e}")
+        print(f" Error connecting to PostgreSQL: {e}")
         return None, None
 
 # Connect to MySQL (RDS) using SQLAlchemy
@@ -60,10 +60,10 @@ def connect_mysql():
     try:
         engine = create_engine(mysql_connection_url)
         connection = engine.connect()
-        print("✅ MySQL connection established.")
+        print("MySQL connection established.")
         return engine, connection
     except SQLAlchemyError as e:
-        print(f"❌ Error connecting to MySQL: {e}")
+        print(f"Error connecting to MySQL: {e}")
         return None, None
 
 # Extract data from PostgreSQL
@@ -74,7 +74,7 @@ def extract_data_from_postgresql(pg_connection, query):
         print(f"📥 Extracted {len(data)} rows from PostgreSQL.")
         return data
     except SQLAlchemyError as e:
-        print(f"❌ Error extracting data from PostgreSQL: {e}")
+        print(f" Error extracting data from PostgreSQL: {e}")
         return []
 
 # Create the table in MySQL using SQLAlchemy
@@ -82,15 +82,15 @@ def create_table_in_mysql(mysql_engine):
     try:
         table = define_table()
         metadata.create_all(mysql_engine)  # Creates table if it doesn't exist
-        print(f"✅ Table '{table.name}' created in MySQL.")
+        print(f" Table '{table.name}' created in MySQL.")
     except SQLAlchemyError as e:
-        print(f"❌ Error creating table in MySQL: {e}")
+        print(f" Error creating table in MySQL: {e}")
 
 # Insert data into MySQL (RDS) using SQLAlchemy ORM
 def insert_data_to_mysql(mysql_engine, data):
     try:
         if not data:
-            print("⚠️ No data to insert.")
+            print(" No data to insert.")
             return
 
         table = define_table()  # Ensure the correct table is used
@@ -107,7 +107,7 @@ def insert_data_to_mysql(mysql_engine, data):
 
         print(f"📤 Inserted {len(data)} rows into MySQL.")
     except SQLAlchemyError as e:
-        print(f"❌ Error inserting data into MySQL: {e}")
+        print(f"Error inserting data into MySQL: {e}")
 
 # Main function to orchestrate the process
 def main():
@@ -140,7 +140,7 @@ def main():
     # Close the connections
     pg_conn.close()
     mysql_conn.close()
-    print("✅ Process completed successfully.")
+    print("Process completed successfully.")
 
 # Run the main function
 if __name__ == "__main__":
