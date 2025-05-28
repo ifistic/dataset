@@ -7,7 +7,7 @@ def read_csv_with_fallback(body_stream):
     try:
         return pd.read_csv(io.BytesIO(raw_bytes), encoding='utf-8')
     except UnicodeDecodeError:
-        print("⚠️ UTF-8 decode failed, retrying with 'latin1' encoding...")
+        print("UTF-8 decode failed, retrying with 'latin1' encoding...")
         return pd.read_csv(io.BytesIO(raw_bytes), encoding='latin1')
 
 def main():
@@ -26,7 +26,7 @@ def main():
 
         # Step 1: Infer and print original data types
         original_types = df.dtypes.apply(lambda x: str(x)).to_dict()
-        print("📌 Original Data Types:")
+        print("Original Data Types:")
         for col, dtype in original_types.items():
             print(f"  {col}: {dtype}")
 
